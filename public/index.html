@@ -52,11 +52,6 @@
     });
 
     peerRef.current = peer;
-
-    return () => {
-        peer.disconnect();
-        peer.destroy();
-    };
 }, []);
 
                 peer.on("open", (id) => {
