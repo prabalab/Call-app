@@ -9,12 +9,10 @@
     <h1>WebRTC Video Call</h1>
     <div id="root"></div>
 
-    <!-- React CDN -->
+    <!-- React, PeerJS, and Socket.io -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-    <!-- PeerJS and Socket.io -->
-    <script src="https://unpkg.com/peerjs@0.6.1/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <script>
@@ -25,16 +23,15 @@
             const [peerId, setPeerId] = useState("");
             const [incomingCall, setIncomingCall] = useState(false);
             const [callerId, setCallerId] = useState("");
-            const [callerSignal, setCallerSignal] = useState(null);
-            
+
             const peerRef = useRef(null);
             const myVideoRef = useRef(null);
             const userVideoRef = useRef(null);
-            const socket = useRef(io("https://call-app-ypk7.onrender.com")); // Change to your deployed server
+            const socket = useRef(io("https://your-app.onrender.com")); // Change to your deployed server
 
             useEffect(() => {
                 const peer = new Peer(undefined, {
-                    host: "call-app-ypk7.onrender.com",
+                    host: "your-app.onrender.com",
                     port: 443,
                     path: "/peerjs",
                     secure: true
@@ -47,12 +44,15 @@
                 peer.on("call", (call) => {
                     setIncomingCall(true);
                     setCallerId(call.peer);
-                    setCallerSignal(call.metadata.signal);
+
+                    // Store the call instance
+                    peerRef.current.callInstance = call;
                 });
 
                 peerRef.current = peer;
-                
+
                 return () => {
+                    if (peerRef.current) peerRef.current.destroy();
                     socket.current.disconnect();
                 };
             }, []);
@@ -75,9 +75,11 @@
                 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                     .then((stream) => {
                         myVideoRef.current.srcObject = stream;
-                        const call = peerRef.current.answer(callerSignal, stream);
 
-                        call.on("stream", (remoteStream) => {
+                        // Answer the stored call instance
+                        peerRef.current.callInstance.answer(stream);
+
+                        peerRef.current.callInstance.on("stream", (remoteStream) => {
                             userVideoRef.current.srcObject = remoteStream;
                         });
 
