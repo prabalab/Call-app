@@ -10,22 +10,27 @@ const App = () => {
     const peerRef = useRef(null);
     const myVideoRef = useRef(null);
     const userVideoRef = useRef(null);
-    const socket = io("https://call-app-ypk7.onrender.com");  // Change this if deployed
+    const socket = io("https://call-app-ypk7.onrender.com"); // Change if deployed
 
     useEffect(() => {
         const peer = new Peer();
         peer.on("open", (id) => {
             setMyId(id);
-            socket.emit("register-peer", id);  // Inform the server
+            socket.emit("register-peer", id);
         });
 
         peerRef.current = peer;
 
+        // Handle incoming calls
         socket.on("incoming-call", ({ from, signal }) => {
             console.log(`Incoming call from: ${from}`);
             setIncomingCall(true);
             setCallerId(from);
             setCallerSignal(signal);
+        });
+
+        socket.on("call-accepted", ({ signal }) => {
+            peerRef.current.signal(signal);
         });
     }, []);
 
