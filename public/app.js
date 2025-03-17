@@ -10,7 +10,7 @@ const App = () => {
     const peerRef = useRef(null);
     const myVideoRef = useRef(null);
     const userVideoRef = useRef(null);
-    const socket = io("http://localhost:5000");  // Change this if deployed
+    const socket = io("https://call-app-ypk7.onrender.com");  // Change this if deployed
 
     useEffect(() => {
         const peer = new Peer();
