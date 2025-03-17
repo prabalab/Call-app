@@ -32,13 +32,32 @@
             const userVideoRef = useRef(null);
             const socket = useRef(io("https://call-app-ypk7.onrender.com")); // Change to your deployed server
 
-            useEffect(() => {
-                const peer = new Peer(undefined, {
-                    host: "call-app-ypk7.onrender.com",
-                    port: 443,
-                    path: "/peerjs",
-                    secure: true
-                });
+     
+
+                useEffect(() => {
+    const peer = new Peer(undefined, {
+        host: "call-app-ypk7.onrender.com",
+        port: 443, 
+        path: "/peerjs",
+        secure: true
+    });
+
+    peer.on("open", (id) => {
+        console.log("My Peer ID:", id);
+        setMyId(id);
+    });
+
+    peer.on("error", (err) => {
+        console.error("PeerJS Error:", err);
+    });
+
+    peerRef.current = peer;
+
+    return () => {
+        peer.disconnect();
+        peer.destroy();
+    };
+}, []);
 
                 peer.on("open", (id) => {
     console.log("Generated ID:", id);  // Check if ID is generated
