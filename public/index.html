@@ -41,8 +41,9 @@
                 });
 
                 peer.on("open", (id) => {
-                    setMyId(id);
-                });
+    console.log("Generated ID:", id);  // Check if ID is generated
+    setMyId(id);
+});
 
                 peer.on("call", (call) => {
                     setIncomingCall(true);
