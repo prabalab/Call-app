@@ -8,21 +8,24 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Enable CORS and serve static files from the "public" folder
 app.use(cors());
-app.use(express.static(path.join(__dirname, "public")));
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
+    // Handle call initiation
     socket.on("call-user", (data) => {
+        console.log(`Call from ${socket.id} to ${data.userToCall}`);
         io.to(data.userToCall).emit("incoming-call", { from: socket.id, signal: data.signal });
     });
 
+    // Handle call answering
     socket.on("answer-call", (data) => {
-        io.to(data.to).emit("call-accepted", data.signal);
+        console.log(`${socket.id} answered the call from ${data.to}`);
+        io.to(data.to).emit("call-accepted", { signal: data.signal });
     });
 
+    // Handle user disconnection
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
     });
@@ -33,6 +36,6 @@ app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Set the server to listen on a specific port
+// Start server on port 5000
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
