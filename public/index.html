@@ -85,15 +85,16 @@
                         setIncomingCall(false);
                     });
             };
-
-            return React.createElement("div", null,
-                React.createElement("h2", null, `My ID: ${myId}`),
-                React.createElement("input", { placeholder: "Enter Peer ID", onChange: (e) => setPeerId(e.target.value) }),
-                React.createElement("button", { onClick: startCall }, "Call"),
-                incomingCall && React.createElement("button", { onClick: answerCall }, `Answer Call from ${callerId}`),
-                React.createElement("video", { ref: myVideoRef, autoPlay: true, muted: true, width: 300 }),
-                React.createElement("video", { ref: userVideoRef, autoPlay: true, width: 300 })
-            );
+            
+return React.createElement("div", null,
+    React.createElement("h2", null, `My ID: ${myId || "Generating..."}`),  // Show "Generating..." if ID is empty
+    React.createElement("input", { placeholder: "Enter Peer ID", onChange: (e) => setPeerId(e.target.value) }),
+    React.createElement("button", { onClick: startCall }, "Call"),
+    incomingCall && React.createElement("button", { onClick: answerCall }, `Answer Call from ${callerId}`),
+    React.createElement("video", { ref: myVideoRef, autoPlay: true, muted: true, width: 300 }),
+    React.createElement("video", { ref: userVideoRef, autoPlay: true, width: 300 })
+);
+            
         };
 
         ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
