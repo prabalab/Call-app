@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { 
-        origin: process.env.NODE_ENV === "development" ? "*" : ["https://your-domain.com"] 
+        origin: process.env.NODE_ENV === "development" ? "*" : ["https://call-app-ypk7.onrender.com"] 
     } 
 });
 
