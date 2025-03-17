@@ -1,0 +1,32 @@
+{
+  "name": "webrtc-call-app",
+  "version": "1.0.0",
+  "description": "A WebRTC-based voice and video calling application using Node.js, WebRTC, Socket.io, and PeerJS.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "peer": "^1.3.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "webrtc",
+    "video-call",
+    "voice-call",
+    "socket.io",
+    "peerjs",
+    "nodejs"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
