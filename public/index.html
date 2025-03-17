@@ -30,44 +30,37 @@
             const peerRef = useRef(null);
             const myVideoRef = useRef(null);
             const userVideoRef = useRef(null);
-            const socket = useRef(io("https://call-app-ypk7.onrender.com")); // Change to your deployed server
+            const socket = useRef(io("https://call-app-ypk7.onrender.com"));
 
-     
-
-                useEffect(() => {
-    const peer = new Peer(undefined, {
-        host: "call-app-ypk7.onrender.com",
-        port: 443, 
-        path: "/peerjs",
-        secure: true
-    });
-
-    peer.on("open", (id) => {
-        console.log("My Peer ID:", id);
-        setMyId(id);
-    });
-
-    peer.on("error", (err) => {
-        console.error("PeerJS Error:", err);
-    });
-
-    peerRef.current = peer;
-}, []);
+            useEffect(() => {
+                // Initialize PeerJS
+                const peer = new Peer({
+                    host: "call-app-ypk7.onrender.com",
+                    port: 443,
+                    path: "/peerjs",
+                    secure: true
+                });
 
                 peer.on("open", (id) => {
-    console.log("Generated ID:", id);  // Check if ID is generated
-    setMyId(id);
-});
+                    console.log("My Peer ID:", id);
+                    setMyId(id);
+                });
+
+                peer.on("error", (err) => {
+                    console.error("PeerJS Error:", err);
+                });
 
                 peer.on("call", (call) => {
                     setIncomingCall(true);
                     setCallerId(call.peer);
-                    setCallerSignal(call.metadata.signal);
+                    setCallerSignal(call);
                 });
 
                 peerRef.current = peer;
 
+                // Cleanup function
                 return () => {
+                    peer.destroy();
                     socket.current.disconnect();
                 };
             }, []);
@@ -83,32 +76,36 @@
                         });
 
                         call.on("error", (err) => console.error("Call error:", err));
-                    });
+                    })
+                    .catch(console.error);
             };
 
             const answerCall = () => {
                 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                     .then((stream) => {
                         myVideoRef.current.srcObject = stream;
-                        const call = peerRef.current.answer(callerSignal, stream);
-
-                        call.on("stream", (remoteStream) => {
+                        callerSignal.answer(stream);
+                        
+                        callerSignal.on("stream", (remoteStream) => {
                             userVideoRef.current.srcObject = remoteStream;
                         });
 
                         setIncomingCall(false);
-                    });
+                    })
+                    .catch(console.error);
             };
-            
-return React.createElement("div", null,
-    React.createElement("h2", null, `My ID: ${myId || "Generating..."}`),  // Show "Generating..." if ID is empty
-    React.createElement("input", { placeholder: "Enter Peer ID", onChange: (e) => setPeerId(e.target.value) }),
-    React.createElement("button", { onClick: startCall }, "Call"),
-    incomingCall && React.createElement("button", { onClick: answerCall }, `Answer Call from ${callerId}`),
-    React.createElement("video", { ref: myVideoRef, autoPlay: true, muted: true, width: 300 }),
-    React.createElement("video", { ref: userVideoRef, autoPlay: true, width: 300 })
-);
-            
+
+            return React.createElement("div", null,
+                React.createElement("h2", null, `My ID: ${myId || "Generating ID..."}`),
+                React.createElement("input", { 
+                    placeholder: "Enter Peer ID", 
+                    onChange: (e) => setPeerId(e.target.value) 
+                }),
+                React.createElement("button", { onClick: startCall }, "Call"),
+                incomingCall && React.createElement("button", { onClick: answerCall }, `Answer Call from ${callerId}`),
+                React.createElement("video", { ref: myVideoRef, autoPlay: true, muted: true, width: 300 }),
+                React.createElement("video", { ref: userVideoRef, autoPlay: true, width: 300 })
+            );
         };
 
         ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
