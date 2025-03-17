@@ -5,30 +5,27 @@ const App = () => {
     const [peerId, setPeerId] = useState("");
     const [incomingCall, setIncomingCall] = useState(false);
     const [callerId, setCallerId] = useState("");
+    const [callerSignal, setCallerSignal] = useState(null);
     
     const peerRef = useRef(null);
     const myVideoRef = useRef(null);
     const userVideoRef = useRef(null);
-    const socket = io("https://call-app-ypk7.onrender.com");
+    const socket = io("http://localhost:5000");  // Change this if deployed
 
     useEffect(() => {
         const peer = new Peer();
-        peer.on("open", (id) => setMyId(id));
+        peer.on("open", (id) => {
+            setMyId(id);
+            socket.emit("register-peer", id);  // Inform the server
+        });
+
         peerRef.current = peer;
 
         socket.on("incoming-call", ({ from, signal }) => {
+            console.log(`Incoming call from: ${from}`);
             setIncomingCall(true);
             setCallerId(from);
-
-            peerRef.current.once("call", (call) => {
-                navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((stream) => {
-                    myVideoRef.current.srcObject = stream;
-                    call.answer(stream);
-                    call.on("stream", (remoteStream) => {
-                        userVideoRef.current.srcObject = remoteStream;
-                    });
-                });
-            });
+            setCallerSignal(signal);
         });
     }, []);
 
@@ -44,7 +41,13 @@ const App = () => {
 
     const answerCall = () => {
         setIncomingCall(false);
-        socket.emit("answer-call", { to: callerId });
+        navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((stream) => {
+            myVideoRef.current.srcObject = stream;
+            const call = peerRef.current.answer(callerSignal, stream);
+            call.on("stream", (remoteStream) => {
+                userVideoRef.current.srcObject = remoteStream;
+            });
+        });
     };
 
     return React.createElement("div", null,
