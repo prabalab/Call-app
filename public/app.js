@@ -6,7 +6,7 @@ const App = () => {
     const peerRef = useRef(null);
     const myVideoRef = useRef(null);
     const userVideoRef = useRef(null);
-    const socket = io("http://localhost:5000");
+    const socket = io("https://call-app-ypk7.onrender.com");
 
     useEffect(() => {
         const peer = new Peer();
