@@ -9,26 +9,30 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(cors());
+app.use(express.static(path.join(__dirname, "public")));
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("call-user", (data) => {
-        console.log(`Call from ${socket.id} to ${data.userToCall}`);
-        io.to(data.userToCall).emit("incoming-call", { from: socket.id, signal: data.signal });
+    // Handle call initiation
+    socket.on("call-user", ({ userToCall, signal }) => {
+        console.log(`Call from ${socket.id} to ${userToCall}`);
+        io.to(userToCall).emit("incoming-call", { from: socket.id, signal });
     });
 
-    socket.on("answer-call", (data) => {
-        console.log(`${socket.id} answered the call from ${data.to}`);
-        io.to(data.to).emit("call-accepted", { signal: data.signal });
+    // Handle answering the call
+    socket.on("answer-call", ({ to, signal }) => {
+        console.log(`${socket.id} answered the call from ${to}`);
+        io.to(to).emit("call-accepted", { signal });
     });
 
+    // Handle user disconnection
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
     });
 });
 
-// Handle all other routes and serve index.html
+// Serve index.html for all other routes
 app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
