@@ -27,15 +27,20 @@
             const peerRef = useRef(null);
             const myVideoRef = useRef(null);
             const userVideoRef = useRef(null);
-            const socket = useRef(io("https://your-app.onrender.com")); // Change to your deployed server
+            const socket = useRef(io("https://call-app-ypk7.onrender.com")); // Change to your deployed server
 
             useEffect(() => {
                 const peer = new Peer(undefined, {
-                    host: "your-app.onrender.com",
+                    host: "call-app-ypk7.onrender.com",
                     port: 443,
                     path: "/peerjs",
                     secure: true
                 });
+
+                fetch("https://call-app-ypk7.onrender.com/peerjs/id")
+  .then(res => res.text())
+  .then(data => console.log(data))
+  .catch(err => console.error("PeerJS error:", err));
 
                 peer.on("open", (id) => {
                     setMyId(id);
