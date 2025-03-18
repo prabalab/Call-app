@@ -29,7 +29,158 @@
         const { useState, useEffect, useRef } = React;
 
         const App = () => {
-            // ... [Keep all the previous state and ref declarations] ...
+            const [roomId, setRoomId] = useState("");
+            const [myId, setMyId] = useState("");
+            const [peerId, setPeerId] = useState("");
+            const [callActive, setCallActive] = useState(false);
+            const [status, setStatus] = useState("Disconnected");
+            
+            const localVideoRef = useRef(null);
+            const remoteVideoRef = useRef(null);
+            const socketRef = useRef(null);
+            const peerRef = useRef(null);
+            const currentCallRef = useRef(null);
+
+            useEffect(() => {
+                // Initialize Socket.IO
+                socketRef.current = io("https://call-app-ypk7.onrender.com", {
+                    transports: ["websocket"],
+                    withCredentials: true
+                });
+
+                // Initialize PeerJS
+                peerRef.current = new Peer({
+                    host: "call-app-ypk7.onrender.com",
+                    port: 443,
+                    path: "/peerjs",
+                    secure: true,
+                    debug: 3,
+                    config: {
+                        iceServers: [
+                            { urls: "stun:stun.l.google.com:19302" },
+                            { urls: "stun:global.stun.twilio.com:3478?transport=udp" }
+                        ]
+                    }
+                });
+
+                // PeerJS event handlers
+                peerRef.current.on("open", (id) => {
+                    console.log("Peer ID:", id);
+                    setMyId(id);
+                    setStatus("Connected");
+                });
+
+                peerRef.current.on("error", (err) => {
+                    console.error("PeerJS error:", err);
+                    setStatus(`Error: ${err.message}`);
+                });
+
+                // Handle incoming calls
+                peerRef.current.on("call", async (call) => {
+                    setStatus(`Incoming call from ${call.peer}`);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: true,
+                            audio: true
+                        });
+                        
+                        call.answer(stream);
+                        localVideoRef.current.srcObject = stream;
+                        
+                        call.on("stream", (remoteStream) => {
+                            remoteVideoRef.current.srcObject = remoteStream;
+                            setCallActive(true);
+                            setStatus("Call active");
+                        });
+                        
+                        call.on("close", () => {
+                            setCallActive(false);
+                            setStatus("Call ended");
+                            remoteVideoRef.current.srcObject = null;
+                        });
+                        
+                        currentCallRef.current = call;
+                    } catch (err) {
+                        console.error("Error answering call:", err);
+                        setStatus("Failed to access media devices");
+                    }
+                });
+
+                // Cleanup
+                return () => {
+                    if (peerRef.current) {
+                        peerRef.current.destroy();
+                        setMyId("");
+                    }
+                    if (socketRef.current) socketRef.current.disconnect();
+                };
+            }, []);
+
+            const joinRoom = () => {
+                if (!roomId || !myId) return;
+                setStatus(`Joining room ${roomId}`);
+                socketRef.current.emit("join-room", roomId, myId);
+                
+                socketRef.current.on("user-connected", (userId) => {
+                    console.log("User connected:", userId);
+                    setPeerId(userId);
+                    setStatus(`Peer ${userId} available`);
+                });
+
+                socketRef.current.on("user-disconnected", (userId) => {
+                    console.log("User disconnected:", userId);
+                    setCallActive(false);
+                    setPeerId("");
+                    setStatus("Peer disconnected");
+                    remoteVideoRef.current.srcObject = null;
+                });
+            };
+
+            const startCall = async () => {
+                if (!peerId || callActive) return;
+                
+                try {
+                    setStatus("Starting call...");
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    
+                    localVideoRef.current.srcObject = stream;
+                    
+                    const call = peerRef.current.call(peerId, stream);
+                    
+                    call.on("stream", (remoteStream) => {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                        setCallActive(true);
+                        setStatus("Call active");
+                    });
+                    
+                    call.on("close", () => {
+                        setCallActive(false);
+                        setStatus("Call ended");
+                        remoteVideoRef.current.srcObject = null;
+                    });
+                    
+                    call.on("error", (err) => {
+                        console.error("Call error:", err);
+                        setStatus(`Call failed: ${err.message}`);
+                    });
+                    
+                    currentCallRef.current = call;
+                } catch (err) {
+                    console.error("Error starting call:", err);
+                    setStatus("Failed to start call");
+                }
+            };
+
+            const endCall = () => {
+                if (currentCallRef.current) {
+                    currentCallRef.current.close();
+                    setCallActive(false);
+                    setStatus("Call ended");
+                }
+            };
 
             return React.createElement("div", { className: "container" },
                 React.createElement("h1", null, "Video Call App"),
