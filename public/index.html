@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call App</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .video-container { display: flex; gap: 20px; margin-top: 20px; }
+        video { background: #000; border-radius: 8px; }
+        .controls { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+        input, button { padding: 8px 12px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+
+    <script>
+        const { useState, useEffect, useRef } = React;
+
+        const App = () => {
+            const [roomId, setRoomId] = useState("");
+            const [myId, setMyId] = useState("");
+            const [peerId, setPeerId] = useState("");
+            const [callActive, setCallActive] = useState(false);
+            
+            const localVideoRef = useRef(null);
+            const remoteVideoRef = useRef(null);
+            const socketRef = useRef(null);
+            const peerRef = useRef(null);
+            const currentPeerRef = useRef(null);
+
+            useEffect(() => {
+                // Initialize Socket.IO
+                socketRef.current = io("https://call-app-ypk7.onrender.com", {
+                    transports: ["websocket"]
+                });
+
+                // Initialize PeerJS
+                peerRef.current = new Peer({
+                    host: "call-app-ypk7.onrender.com",
+                    port: 443,
+                    path: "/peerjs",
+                    secure: true,
+                    debug: 3
+                });
+
+                // PeerJS open event
+                peerRef.current.on("open", (id) => {
+                    console.log("My Peer ID:", id);
+                    setMyId(id);
+                });
+
+                // PeerJS error handling
+                peerRef.current.on("error", (err) => {
+                    console.error("PeerJS error:", err);
+                });
+
+                // Handle incoming calls
+                peerRef.current.on("call", async (call) => {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: true,
+                            audio: true
+                        });
+                        
+                        call.answer(stream);
+                        localVideoRef.current.srcObject = stream;
+                        
+                        call.on("stream", (remoteStream) => {
+                            remoteVideoRef.current.srcObject = remoteStream;
+                            setCallActive(true);
+                        });
+                        
+                        call.on("close", () => {
+                            setCallActive(false);
+                            remoteVideoRef.current.srcObject = null;
+                        });
+                    } catch (err) {
+                        console.error("Error answering call:", err);
+                    }
+                });
+
+                // Cleanup
+                return () => {
+                    if (peerRef.current) peerRef.current.destroy();
+                    if (socketRef.current) socketRef.current.disconnect();
+                };
+            }, []);
+
+            const joinRoom = () => {
+                if (!roomId || !myId) return;
+                
+                socketRef.current.emit("join-room", roomId, myId);
+                
+                socketRef.current.on("user-connected", (userId) => {
+                    console.log("User connected:", userId);
+                    setPeerId(userId);
+                });
+
+                socketRef.current.on("user-disconnected", (userId) => {
+                    console.log("User disconnected:", userId);
+                    setCallActive(false);
+                    setPeerId("");
+                    remoteVideoRef.current.srcObject = null;
+                });
+            };
+
+            const startCall = async () => {
+                if (!peerId) return;
+                
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    
+                    localVideoRef.current.srcObject = stream;
+                    
+                    const call = peerRef.current.call(peerId, stream);
+                    
+                    call.on("stream", (remoteStream) => {
+                        remoteVideoRef.current.srcObject = remoteStream;
+                        setCallActive(true);
+                    });
+                    
+                    call.on("close", () => {
+                        setCallActive(false);
+                        remoteVideoRef.current.srcObject = null;
+                    });
+                    
+                    currentPeerRef.current = call;
+                } catch (err) {
+                    console.error("Error starting call:", err);
+                }
+            };
+
+            return React.createElement("div", { className: "container" },
+                React.createElement("h1", null, "Video Call App"),
+                
+                React.createElement("div", { className: "controls" },
+                    React.createElement("input", {
+                        type: "text",
+                        placeholder: "Enter Room ID",
+                        value: roomId,
+                        onChange: (e) => setRoomId(e.target.value)
+                    }),
+                    React.createElement("button", {
+                        onClick: joinRoom,
+                        disabled: !roomId
+                    }, "Join Room"),
+                    
+                    React.createElement("input", {
+                        type: "text",
+                        placeholder: "Peer ID",
+                        value: peerId,
+                        onChange: (e) => setPeerId(e.target.value),
+                        disabled: !roomId
+                    }),
+                    React.createElement("button", {
+                        onClick: startCall,
+                        disabled: !peerId || callActive
+                    }, "Start Call"),
+                    
+                    React.createElement("p", null, `Your ID: ${myId || "Connecting..."}`)
+                ),
+                
+                React.createElement("div", { className: "video-container" },
+                    React.createElement("video", {
+                        ref: localVideoRef,
+                        autoPlay: true,
+                        muted: true,
+                        style: { width: "300px" }
+                    }),
+                    React.createElement("video", {
+                        ref: remoteVideoRef,
+                        autoPlay: true,
+                        style: { width: "300px" }
+                    })
+                )
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById("root"))
+            .render(React.createElement(App));
+    </script>
+</body>
+</html>
