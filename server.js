@@ -7,39 +7,67 @@ const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { 
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 // Enable CORS
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.static("public"));
 
-// Set up PeerJS server
+// Configure PeerJS server
 const peerServer = ExpressPeerServer(server, {
     debug: true,
     path: "/peerjs",
+    proxied: true, // Important for hosted environments
     allow_discovery: true
 });
+
 app.use("/peerjs", peerServer);
 
-// Handle WebRTC signaling
+// Add event listeners for PeerJS server
+peerServer.on('connection', (client) => {
+    console.log('PeerJS client connected:', client.getId());
+});
+
+peerServer.on('disconnect', (client) => {
+    console.log('PeerJS client disconnected:', client.getId());
+});
+
+// Socket.io signaling
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
+    socket.on("join-room", (roomId, userId) => {
+        socket.join(roomId);
+        socket.to(roomId).emit("user-connected", userId);
+        
+        socket.on("disconnect", () => {
+            socket.to(roomId).emit("user-disconnected", userId);
+        });
+    });
+
     socket.on("call-user", (data) => {
-        io.to(data.userToCall).emit("incoming-call", { from: socket.id, signal: data.signal });
+        io.to(data.userToCall).emit("incoming-call", {
+            from: socket.id,
+            signal: data.signal,
+            userId: data.userId
+        });
     });
 
     socket.on("answer-call", (data) => {
-        io.to(data.to).emit("call-accepted", data.signal);
-    });
-
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+        io.to(data.to).emit("call-accepted", {
+            signal: data.signal,
+            userId: data.userId
+        });
     });
 });
 
-app.get("/call", (req, res) => {
+// Routes
+app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
